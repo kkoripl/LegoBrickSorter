@@ -3,9 +3,9 @@ class AppParameters(object):
     base_img_dir = "../data/Base_Images"
     resized_base_img_dir = "../data/Base_Images_Resized"
     cropped_img_dir = "../data/Cropped_Images"
-    resized_cropped_img_dir = "../data/Cropped_Images_Resized"
     prep_img_dir = "../data_prep"
 
-    img_height = 150
-    img_width = 150
+    data_dir = prep_img_dir
+
+    img_size = (150,150)
     img_channels = 3
