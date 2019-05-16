@@ -1,6 +1,8 @@
 # LegoBrickSorter
 Lego bricks sorter - WUT project for SNR
 
+Python: 3.6
+
 Data:
 https://www.kaggle.com/pacogarciam3/lego-brick-sorting-image-recognition
 
