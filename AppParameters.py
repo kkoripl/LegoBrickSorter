@@ -7,5 +7,5 @@ class AppParameters(object):
 
     data_dir = prep_img_dir
 
-    img_size = (150,150)
+    img_size = (118, 118)
     img_channels = 3
