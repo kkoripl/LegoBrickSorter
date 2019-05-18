@@ -5,6 +5,9 @@ from PIL import Image
 from AppParameters import AppParameters
 from data import Datasets
 
+BACKGROUND = Image.open('../data/background_backlit_B.jpg')
+BACKGROUND_WIDTH = BACKGROUND.size[0]
+BACKGROUND_HEIGHT = BACKGROUND.size[1]
 
 def prepare_images():
     images_dir = os.path.abspath(AppParameters.cropped_img_dir)
@@ -26,10 +29,13 @@ def resize_and_save_images(images_paths, actual_dir, target_dir):
     for img_path in images_paths:
         img = Image.open(os.path.join(actual_dir, img_path))
         if img.size[0] > img.size[1]:
-            new_dim = (img.size[0], img.size[0])
+            bigger_dim_value = img.size[0]
         else:
-            new_dim = (img.size[1], img.size[1])
-        layer = Image.new('RGB', new_dim, (255, 255, 255))
+            bigger_dim_value = img.size[1]
+
+        new_dim = (bigger_dim_value, bigger_dim_value)
+        layer = BACKGROUND.crop((BACKGROUND_WIDTH/2 - bigger_dim_value/2, BACKGROUND_HEIGHT/2 - bigger_dim_value/2,
+                                 BACKGROUND_WIDTH/2 + bigger_dim_value/2, BACKGROUND_HEIGHT/2 + bigger_dim_value/2))
         layer.paste(img, tuple(map(lambda x: round((x[0] - x[1]) / 2), zip(new_dim, img.size))))
         layer = layer.resize(AppParameters.img_size, resample=Image.ANTIALIAS)
         layer.save(os.path.join(target_dir, img_path))
