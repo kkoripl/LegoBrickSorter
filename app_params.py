@@ -1,4 +1,4 @@
-class AppParameters(object):
+class AppParams(object):
     img_dir = "../data"
     base_img_dir = "../data/Base_Images"
     resized_base_img_dir = "../data/Base_Images_Resized"
@@ -7,5 +7,8 @@ class AppParameters(object):
 
     data_dir = prep_img_dir
 
-    img_size = (118, 118)
+    img_size = (128, 128)
     img_channels = 3
+
+    base_model_path = 'models/base_model_mobilenetv2_avg_pool_128.h5'
+    trained_model_path = 'models/mobilenetv2_last_layer_trained_89_acc.h5'

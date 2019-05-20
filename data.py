@@ -2,7 +2,7 @@ import os
 
 import cv2
 
-from AppParameters import AppParameters
+from app_params import AppParams
 
 
 class Datasets:
@@ -12,7 +12,7 @@ class Datasets:
     test_labels = []
     possible_labels = []
 
-    __data_dir = os.path.abspath(AppParameters.data_dir)
+    __data_dir = os.path.abspath(AppParams.data_dir)
 
     def __init__(self, pct_of_trainset):
         self.__find_possible_labels()
