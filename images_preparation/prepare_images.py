@@ -3,7 +3,6 @@ import os
 from PIL import Image
 
 from app_params import AppParams
-from data import Datasets
 
 BACKGROUND = Image.open('../data/background_backlit_B.jpg')
 BACKGROUND_WIDTH = BACKGROUND.size[0]
@@ -50,9 +49,5 @@ def make_prep_img_dirs_as(main_resize_dir, main_dir):
 
     for resize_subdir in [subdir for subdir in os.listdir(main_dir)]:
         os.makedirs(os.path.join(main_resize_dir, resize_subdir), exist_ok=True)
-
-
-def test():
-    datasets = Datasets(0.75)
 
 prepare_images()

@@ -12,3 +12,8 @@ class AppParams(object):
 
     base_model_path = 'models/base_model_mobilenetv2_avg_pool_128.h5'
     trained_model_path = 'models/mobilenetv2_last_layer_trained_89_acc.h5'
+
+    linear_kernel = 'linear'
+    square_kernel = 'poly2'
+    exp_kernel = 'rbf'
+    svm_kernel_types = [linear_kernel, square_kernel, exp_kernel]

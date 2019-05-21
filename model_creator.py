@@ -65,13 +65,9 @@ class ModelCreator(object):
         output_tensor = self._add_output_layer(self.base_model)
         model = Model(input=self.base_model.input, outputs=output_tensor)
 
-        model.compile(optimizer=Adam(),
-                      loss='categorical_crossentropy',
-                      metrics=['categorical_accuracy'])
-        print('model compiled')
+        model = self.ompile_model(model)
 
-        (train, test, train_lab, test_lab) = train_test_split(self.images,
-                                                              self.encoded_labels, test_size=0.25, random_state=42)
+        (train, test, train_lab, test_lab) = self.setup_image_sets(test_size=0.25)
 
         steps_per_epoch = 1
         epochs = 50
@@ -93,8 +89,7 @@ class ModelCreator(object):
 
         model.layers[-1].trainable = True
 
-        (train, test, train_lab, test_lab) = train_test_split(self.images,
-                                                              self.encoded_labels, test_size=0.25, random_state=42)
+        (train, test, train_lab, test_lab) = self.setup_image_sets(test_size=0.25)
 
         steps_per_epoch = 1
         epochs = 20
@@ -107,6 +102,15 @@ class ModelCreator(object):
 
         model.save(f'models/trained_further_last_layer_mobilenetv2_{epochs}.h5')
 
+    def compile_model(self, model):
+        model.compile(optimizer=Adam(),
+                      loss='categorical_crossentropy',
+                      metrics=['categorical_accuracy'])
+        print('model compiled')
+        return model
+
+    def setup_image_sets(self, test_size):
+        return train_test_split(self.images, self.encoded_labels, test_size=test_size, random_state=42)
 
     def _add_output_layer(self, base_model):
         output_tensor = Dense(self.categories_cnt, activation='softmax')(base_model.output)
