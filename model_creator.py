@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from imutils import paths
 from keras.applications.mobilenetv2 import MobileNetV2
-from keras.layers import Dense, Input
+from keras.layers import Dense, Input, Dropout
 from keras.layers.convolutional import Conv2D
 from keras.models import Model
 from keras.models import load_model
@@ -82,7 +82,7 @@ class ModelCreator(object):
     def train_last_fully_connected_layer(self, optimizer=Adam(), loss=AppParams.loss, final_training_mode=True):
         for layer in self.base_model.layers:
             layer.trainable = False
-        output_tensor = self._add_output_layer(self.base_model)
+        output_tensor = self._add_classification_layers(self.base_model)
         model = Model(input=self.base_model.input, outputs=output_tensor)
         model = self.compile_model(model, optimizer=optimizer, loss=loss)
         self.model, self.learn_history = self.fit_model(model, final_training_mode)
@@ -93,7 +93,7 @@ class ModelCreator(object):
             layer.trainable = not first_conv_trainable_set
             if type(layer) is Conv2D:
                 first_conv_trainable_set = True
-        output_tensor = self._add_output_layer(self.base_model)
+        output_tensor = self._add_classification_layers(self.base_model)
         model = Model(input=self.base_model.input, outputs=output_tensor)
         model = self.compile_model(model, optimizer=optimizer, loss=loss)
         self.model, self.learn_history = self.fit_model(model, final_training_mode)
@@ -143,9 +143,10 @@ class ModelCreator(object):
                       metrics=['categorical_accuracy'])
         return model
 
-    def _add_output_layer(self, base_model):
-        output_tensor = Dense(self.categories_cnt, activation='softmax')(base_model.output)
-        output_tensor.trainable = True
+    def _add_classification_layers(self, base_model):
+        first_classif_layer = Dense(AppParams.first_classif_layer_size, activation='relu')(base_model.output)
+        dropout_layer = Dropout(AppParams.dropout_rate)(first_classif_layer)
+        output_tensor = Dense(self.categories_cnt, activation='softmax')(dropout_layer)
         return output_tensor
 
     @staticmethod

@@ -15,10 +15,12 @@ class AppParams(object):
 
     random_state = 37
 
-    layers_trainable_mode = LayersTrainableMode.LAST_CONV
+    layers_trainable_mode = LayersTrainableMode.ONLY_CLASSIF
     test_part = 0.25
     epochs = 10
     loss = 'categorical_crossentropy'
+    first_classif_layer_size = 10
+    dropout_rate = 0.1
 
     val_epochs = 10
 

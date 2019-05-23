@@ -8,10 +8,10 @@ model_creator = ModelCreator()
 model_creator.load_base_pretrained_model()
 model_creator.read_prepared_data()
 
-if AppParams.layers_trainable_mode is LayersTrainableMode.LAST:
+if AppParams.layers_trainable_mode is LayersTrainableMode.ONLY_CLASSIF:
     model_creator.train_last_fully_connected_layer()
     dd.draw_learning_history(model_creator.learn_history, title='Uczona ostatnia warstwa')
-elif AppParams.layers_trainable_mode is LayersTrainableMode.LAST_CONV:
+elif AppParams.layers_trainable_mode is LayersTrainableMode.FROM_LAST_CONV:
     model_creator.train_from_last_convolutional_layer()
     dd.draw_learning_history(model_creator.learn_history, title='Uczenie od ostatniej warstwy splotowej')
 model_creator.save_model(
