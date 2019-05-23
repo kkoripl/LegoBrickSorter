@@ -1,5 +1,6 @@
 data
 data_prep
 venv
+charts
 .idea
 __pycache__

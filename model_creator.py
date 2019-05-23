@@ -6,6 +6,7 @@ import numpy as np
 from imutils import paths
 from keras.applications.mobilenetv2 import MobileNetV2
 from keras.layers import Dense, Input
+from keras.layers.convolutional import Conv2D
 from keras.models import Model
 from keras.models import load_model
 from keras.optimizers import Adam
@@ -16,14 +17,24 @@ from app_params import AppParams
 
 
 class ModelCreator(object):
-    images = []
-    encoded_labels = []
     categories_cnt = None
     base_model = None
+    model = None
+    learn_history = None
+
+    train = []
+    val = []
+    train_val = []
+    test = []
+
+    train_lab = []
+    val_lab = []
+    train_val_lab = []
+    test_lab = []
 
     def read_prepared_data(self):
         image_paths = sorted(list(paths.list_images('data_prep')))
-        random.seed(37)
+        random.seed(AppParams.random_state)
         random.shuffle(image_paths)
         examples_cnt = len(image_paths)
         images = []
@@ -38,19 +49,26 @@ class ModelCreator(object):
             labels.append(label)
 
         self.categories_cnt = len(set(labels))
-        self.images = np.array(images)
-        self.encoded_labels = np.array(self.binarize_labels(labels))
+        images = np.array(images)
+        encoded_labels = np.array(self.binarize_labels(labels))
+
+        (self.train_val, self.test, self.train_val_lab, self.test_lab) = train_test_split(images,
+                                                                                          encoded_labels,
+                                                                                          test_size=AppParams.test_part,
+                                                                                          random_state=AppParams.random_state)
+
+        (self.train, self.val, self.train_lab, self.val_lab) = train_test_split(self.train_val, self.train_val_lab,
+                                                                                test_size=AppParams.test_part,
+                                                                                random_state=AppParams.random_state)
 
     def load_base_pretrained_model(self):
         model_exists = os.path.isfile(AppParams.base_model_path)
         if model_exists:
             self.base_model = load_model(AppParams.base_model_path)
         else:
-            self.base_model = self.download_pretrained_model()
-        for layer in self.base_model.layers:
-            layer.trainable = False
+            self.base_model = self._download_pretrained_model()
 
-    def download_pretrained_model(self):
+    def _download_pretrained_model(self):
         input_tensor = Input(shape=(AppParams.img_size[0], AppParams.img_size[1], 3))
         base_model = MobileNetV2(
             include_top=False,
@@ -58,59 +76,72 @@ class ModelCreator(object):
             input_tensor=input_tensor,
             input_shape=(AppParams.img_size[0], AppParams.img_size[1], 3),
             pooling='avg')
-        base_model.save(f'models/base_model_mobilenetv2_pool_avg_{AppParams.img_size[0]}.h5')
+        base_model.save(AppParams.base_model_path)
         return base_model
 
-    def train_last_fully_connected_layer(self):
+    def train_last_fully_connected_layer(self, optimizer=Adam(), loss=AppParams.loss, final_training_mode=True):
+        for layer in self.base_model.layers:
+            layer.trainable = False
         output_tensor = self._add_output_layer(self.base_model)
         model = Model(input=self.base_model.input, outputs=output_tensor)
+        model = self.compile_model(model, optimizer=optimizer, loss=loss)
+        self.model, self.learn_history = self.fit_model(model, final_training_mode)
 
-        model = self.ompile_model(model)
+    def train_from_last_convolutional_layer(self, optimizer=Adam(), loss=AppParams.loss, final_training_mode=True):
+        first_conv_trainable_set = False
+        for layer in reversed(self.base_model.layers):
+            layer.trainable = not first_conv_trainable_set
+            if type(layer) is Conv2D:
+                first_conv_trainable_set = True
+        output_tensor = self._add_output_layer(self.base_model)
+        model = Model(input=self.base_model.input, outputs=output_tensor)
+        model = self.compile_model(model, optimizer=optimizer, loss=loss)
+        self.model, self.learn_history = self.fit_model(model, final_training_mode)
 
-        (train, test, train_lab, test_lab) = self.setup_image_sets(test_size=0.25)
+    def fit_model(self, model, training_mode):
+        if training_mode:
+            learn_history = model.fit(
+                x=self.train_val,
+                y=self.train_val_lab,
+                verbose=1,
+                epochs=AppParams.epochs,
+                validation_data=(self.test, self.test_lab)
+            )
+        else:
+            learn_history = model.fit(
+                x=self.train,
+                y=self.train_lab,
+                verbose=1,
+                epochs=AppParams.val_epochs,
+                validation_data=(self.val, self.val_lab)
+            )
+        return model, learn_history
 
-        steps_per_epoch = 1
-        epochs = 50
-        model.fit(
-            x=train,
-            y=train_lab,
-            steps_per_epoch=steps_per_epoch,
-            verbose=1,
-            epochs=epochs)
-
-        model.save(f'models/last_layer_trained_mobilenetv2_{steps_per_epoch}_{epochs}.h5')
-
-
-
-    def train_last_fully_connected_layer_further(self):
+    def train_last_fully_connected_layer_further(self, initial_epoch=None):
         model = load_model(AppParams.trained_model_path)
         for layer in model.layers:
             layer.trainable = False
-
         model.layers[-1].trainable = True
 
-        (train, test, train_lab, test_lab) = self.setup_image_sets(test_size=0.25)
-
-        steps_per_epoch = 1
-        epochs = 20
-        model.fit(
-            x=train,
-            y=train_lab,
-            steps_per_epoch=steps_per_epoch,
+        learn_history = model.fit(
+            x=self.train_val,
+            y=self.train_val_lab,
             verbose=1,
-            epochs=epochs)
+            epochs=AppParams.steps_per_epoch,
+            validation_data=(self.test, self.test_lab),
+            initial_epoch=initial_epoch
+        )
+        self.model = model
+        return learn_history
 
-        model.save(f'models/trained_further_last_layer_mobilenetv2_{epochs}.h5')
+    def save_model(self, path):
+        self.model.save(path)
 
-    def compile_model(self, model):
-        model.compile(optimizer=Adam(),
-                      loss='categorical_crossentropy',
+    def compile_model(self, model, optimizer, loss):
+        model.compile(optimizer=optimizer,
+                      loss=loss,
                       metrics=['categorical_accuracy'])
-        print('model compiled')
         return model
-
-    def setup_image_sets(self, test_size):
-        return train_test_split(self.images, self.encoded_labels, test_size=test_size, random_state=42)
 
     def _add_output_layer(self, base_model):
         output_tensor = Dense(self.categories_cnt, activation='softmax')(base_model.output)
@@ -122,10 +153,4 @@ class ModelCreator(object):
         lb = LabelBinarizer()
         encoded_labels = lb.fit_transform(labels)
         return encoded_labels
-
-
-model_creator = ModelCreator()
-model_creator.load_base_pretrained_model()
-model_creator.read_prepared_data()
-model_creator.train_last_fully_connected_layer_further()
 

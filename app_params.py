@@ -1,3 +1,6 @@
+from layers_trainable_modes import LayersTrainableMode
+
+
 class AppParams(object):
     img_dir = "../data"
     base_img_dir = "../data/Base_Images"
@@ -10,8 +13,17 @@ class AppParams(object):
     img_size = (128, 128)
     img_channels = 3
 
+    random_state = 37
+
+    layers_trainable_mode = LayersTrainableMode.LAST_CONV
+    test_part = 0.25
+    epochs = 10
+    loss = 'categorical_crossentropy'
+
+    val_epochs = 10
+
     base_model_path = 'models/base_model_mobilenetv2_avg_pool_128.h5'
-    trained_model_path = 'models/mobilenetv2_last_layer_trained_89_acc.h5'
+    trained_model_path = 'models/mobilenetv2_last_lay_979_acc.h5'
 
     linear_kernel = 'linear'
     square_kernel = 'poly2'
