@@ -15,7 +15,7 @@ class AppParams(object):
 
     random_state = 37
 
-    layers_trainable_mode = LayersTrainableMode.ONLY_CLASSIF
+    layers_trainable_mode = LayersTrainableMode.ALL  # rodzaj zadania
     test_part = 0.25
     epochs = 10
     loss = 'categorical_crossentropy'
