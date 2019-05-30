@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from imutils import paths
 from keras.applications.mobilenetv2 import MobileNetV2
-from keras.layers import Dense, Input, Dropout
+from keras.layers import Dense, Input, Dropout, GlobalAveragePooling1D, GlobalAveragePooling2D
 from keras.layers.convolutional import Conv2D
 from keras.models import Model
 from keras.models import load_model
@@ -109,12 +109,15 @@ class ModelCreator(object):
     def train_whole_convolutional_network(self, removal_coef, optimizer=Adam(), loss=AppParams.loss, final_training_mode=True):
         base_model_layers_cnt = len(self.base_model.layers)  # liczba warstw splotowych
         layers_to_remove_cnt = round(removal_coef*base_model_layers_cnt)  # liczba warstw do usunięcia
-        del self.base_model.layers[base_model_layers_cnt-layers_to_remove_cnt:base_model_layers_cnt]  # usuwanie warstw
+        first_removed_layer = base_model_layers_cnt-layers_to_remove_cnt
+        first_saved_layer = first_removed_layer-1
+        del self.base_model.layers[first_removed_layer:base_model_layers_cnt]  # usuwanie warstw
         for layer in self.base_model.layers:
             layer.trainable = True
-        output_tensor = self._add_classification_layers(self.base_model)
+        output_tensor = self._add_classification_layers(self.base_model.layers[first_saved_layer],True)
         model = Model(input=self.base_model.input, outputs=output_tensor)
         model = self.compile_model(model, optimizer=optimizer, loss=loss)
+        #model.summary() podgląd jak wyglada model
         self.model, self.learn_history = self.fit_model(model, final_training_mode)
 
     def fit_model(self, model, training_mode):
@@ -163,8 +166,21 @@ class ModelCreator(object):
                       metrics=['categorical_accuracy'])
         return model
 
-    def _add_classification_layers(self, base_model):
-        first_classif_layer = Dense(AppParams.first_classif_layer_size, activation='relu')(base_model.output)
+    def _add_classification_layers(self, base_model, training_whole_model=False):
+        standard_size_layer = base_model.output
+        # Przy eksperymentach z uczeniem całej sieci potrzebne jest nagłe zmienienie wymiaru, aby klasyfikator dawał wynik w postaci liczby klas
+        # Zbijamy do 1D, ponieważ dense działa tylko na ostatnim wymiarze (zmienia go na liczbę swoich neuronow), a my mamy 20 klas (1d)
+        if training_whole_model:
+            standard_size_layer = base_model.output
+            # Wymiary warstwy zwracane są np. tak: (none, 1,2,3) mimo iz faktycznie zwracane jest 3D, w length daje to 4 wymiary
+            if len(base_model.output.shape) == 4:
+                # Pooling w 2D: Robimy z 3d => 1d
+                standard_size_layer = GlobalAveragePooling2D()(base_model.output)
+            elif len(base_model.output.shape) == 3:
+                # Pooling w 2D: Robimy z 2d => 1d
+                standard_size_layer = GlobalAveragePooling1D()(base_model.output)
+
+        first_classif_layer = Dense(AppParams.first_classif_layer_size, activation='relu')(standard_size_layer)
         dropout_layer = Dropout(AppParams.dropout_rate)(first_classif_layer)
         output_tensor = Dense(self.categories_cnt, activation='softmax')(dropout_layer)
         return output_tensor
