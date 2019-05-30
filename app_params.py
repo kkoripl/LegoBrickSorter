@@ -27,7 +27,17 @@ class AppParams(object):
     base_model_path = 'models/base_model_mobilenetv2_avg_pool_128.h5'
     trained_model_path = 'models/mobilenetv2_last_lay_979_acc.h5'
 
-    linear_kernel = 'linear'
-    square_kernel = 'poly2'
-    exp_kernel = 'rbf'
-    svm_kernel_types = [linear_kernel, square_kernel, exp_kernel]
+    last_layer_before_classifier_name = 'global_average_pooling2d_1'
+
+    # For na zabawę C(od 0.01,1,10,itd.) i gamma (od 0.001,0.01,0.05,1,2,4,10 do 1000)
+    svm_cross_validation_sets = 3
+    svm_c = [1]#, 10, 100, 1000]
+    err_tolerance = [0.9] #1e-1, 1e-2, 1e-3]
+    rbf_gamma = ['scale'] #, 1e-4]
+    square_degree = [2]
+
+    svm_tuned_parameters = [{'kernel': ['poly'], 'degree': square_degree, 'tol': err_tolerance, 'C': svm_c}, #kwadratowa
+                            {'kernel': ['rbf'], 'gamma': rbf_gamma, 'tol': err_tolerance, 'C': svm_c}, #exp
+                            {'kernel': ['linear'], 'tol': err_tolerance, 'C': svm_c}] #liniowa
+
+    svm_score_types = ['accuracy']

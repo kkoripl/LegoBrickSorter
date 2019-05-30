@@ -21,6 +21,7 @@ class ModelCreator(object):
     base_model = None
     model = None
     learn_history = None
+    labels = None
 
     train = []  # zbiór testowy
     val = []  # zbiór walidacyjny
@@ -32,7 +33,7 @@ class ModelCreator(object):
     train_val_lab = []  # kategorie zbioru trenującego oraz walidacyjnego
     test_lab = []  # kategorie zbioru testującego
 
-    def read_prepared_data(self):
+    def read_prepared_data(self, binarize_labels=True):
         image_paths = sorted(list(paths.list_images('data_prep')))  # pobranie obrazów
         random.seed(AppParams.random_state)  # ziarno losowe
         random.shuffle(image_paths)  # pomieszanie obrazów
@@ -49,9 +50,14 @@ class ModelCreator(object):
             label = imagePath.split(os.path.sep)[-2]  # odczytanie kategorii obrazu
             labels.append(label)  # dodanie kategorii obrazu do listy
 
-        self.categories_cnt = len(set(labels))  # liczba kategorii
+        self.labels = list(set(labels))
+        self.categories_cnt = len(self.labels)  # liczba kategorii
         images = np.array(images)
-        encoded_labels = np.array(self.binarize_labels(labels))  # binaryzacja kategorii
+        if binarize_labels:
+            encoded_labels = np.array(self.binarize_labels(labels))  # binaryzacja kategorii
+        else:
+            dict_labels = dict(zip(self.labels, range(0, len(self.labels))))
+            encoded_labels = np.array([dict_labels[label] for label in labels]) # kategorie numerycznie
 
         # podział całego zbioru obrazów na zbiór testujący i walidacyjno-trenujący
         (self.train_val, self.test, self.train_val_lab, self.test_lab) = train_test_split(images,

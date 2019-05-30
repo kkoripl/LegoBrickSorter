@@ -1,8 +1,13 @@
+import datetime
+
+from keras.engine.saving import load_model
+
 import params_validator as pv
 from app_params import AppParams
 from draw_utils import draw_data as dd
 from layers_trainable_modes import LayersTrainableMode
 from model_creator import ModelCreator
+from svm_model import train_svm
 
 model_creator = ModelCreator()
 model_creator.load_base_pretrained_model()  # załadowanie wytrenowanego już modelu
@@ -22,6 +27,11 @@ elif AppParams.layers_trainable_mode is LayersTrainableMode.FROM_LAST_CONV:
 elif AppParams.layers_trainable_mode is LayersTrainableMode.ALL:
     removal_coefs = [0.99]  # współczynniki usuwania warstw
     pv.validate_removal_coef(removal_coefs)
+
+# ZADANIE 4 - SVM
+elif AppParams.layers_trainable_mode is LayersTrainableMode.SVM_REP:
+    print(str(datetime.datetime.now()) + ' - start loading model')
+    svm = train_svm(load_model(AppParams.trained_model_path), model_creator)
 
 # zapisanie modelu
 # model_creator.save_model(
