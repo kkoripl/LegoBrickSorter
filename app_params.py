@@ -8,6 +8,9 @@ class AppParams(object):
     cropped_img_dir = "../data/Cropped_Images"
     prep_img_dir = "../data_prep"
 
+    plots_dir = "plots/"
+    plots_extension = ".png"
+
     data_dir = prep_img_dir
 
     img_size = (128, 128)
@@ -29,15 +32,22 @@ class AppParams(object):
 
     last_layer_before_classifier_name = 'global_average_pooling2d_1'
 
-    # For na zabawę C(od 0.01,1,10,itd.) i gamma (od 0.001,0.01,0.05,1,2,4,10 do 1000)
+    svm_top_n_values = [1, 5]
     svm_cross_validation_sets = 3
-    svm_c = [1]#, 10, 100, 1000]
-    err_tolerance = [0.9] #1e-1, 1e-2, 1e-3]
-    rbf_gamma = ['scale'] #, 1e-4]
-    square_degree = [2]
+    svm_c = [1e-3, 1e-2, 1e-1, 1, 10, 100, 1000]
+    svm_c_powers = [-3, -2, -1, 0, 1, 2, 3]
+    svm_c_points_to_check = 10
 
-    svm_tuned_parameters = [{'kernel': ['poly'], 'degree': square_degree, 'tol': err_tolerance, 'C': svm_c}, #kwadratowa
-                            {'kernel': ['rbf'], 'gamma': rbf_gamma, 'tol': err_tolerance, 'C': svm_c}, #exp
-                            {'kernel': ['linear'], 'tol': err_tolerance, 'C': svm_c}] #liniowa
+    gamma = 'scale'
+    square_degree = 2
+    svm_probability = True
+
+    linear_kernel = {'kernel': 'linear', 'probability': svm_probability, 'gamma': gamma}
+    square_kernel = {'kernel': 'poly', 'degree': square_degree, 'probability': svm_probability, 'gamma': gamma}
+    exp_kernel = {'kernel': 'rbf', 'probability': svm_probability, 'gamma': gamma}
+
+    svm_tuned_parameters = [{'kernel': ['poly'], 'degree': [square_degree], 'gamma': [gamma], 'C': svm_c, 'probability': [svm_probability]}, #kwadratowa
+                            {'kernel': ['rbf'], 'gamma': [gamma], 'C': svm_c, 'probability': [svm_probability]}, #exp
+                            {'kernel': ['linear'], 'gamma': [gamma], 'C': svm_c, 'probability': [svm_probability]}] #liniowa
 
     svm_score_types = ['accuracy']
