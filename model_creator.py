@@ -33,7 +33,7 @@ class ModelCreator(object):
     train_val_lab = []  # kategorie zbioru trenującego oraz walidacyjnego
     test_lab = []  # kategorie zbioru testującego
 
-    def read_prepared_data(self, binarize_labels=True):
+    def read_prepared_data(self, binarize_labels=True, save_labels_for_svm=False):
         image_paths = sorted(list(paths.list_images('data_prep')))  # pobranie obrazów
         random.seed(AppParams.random_state)  # ziarno losowe
         random.shuffle(image_paths)  # pomieszanie obrazów
@@ -51,6 +51,10 @@ class ModelCreator(object):
             labels.append(label)  # dodanie kategorii obrazu do listy
 
         self.labels = list(set(labels))
+
+        if save_labels_for_svm:
+            np.save(AppParams.svm_labels_path, self.labels)
+
         self.categories_cnt = len(self.labels)  # liczba kategorii
         images = np.array(images)
         if binarize_labels:
@@ -65,10 +69,16 @@ class ModelCreator(object):
                                                                                           test_size=AppParams.test_part,
                                                                                           random_state=AppParams.random_state)
 
+        if save_labels_for_svm:
+            np.save(AppParams.svm_test_labels_path, self.test_lab)
+
         # podział zbioru walidacyno-trenującego na zbiór walidacyjny i trenujący
         (self.train, self.val, self.train_lab, self.val_lab) = train_test_split(self.train_val, self.train_val_lab,
                                                                                 test_size=AppParams.test_part,
                                                                                 random_state=AppParams.random_state)
+
+        if save_labels_for_svm:
+            np.save(AppParams.svm_train_labels_path, self.train_lab)
 
     # załadowanie wytrenowanego już modelu
     def load_base_pretrained_model(self):

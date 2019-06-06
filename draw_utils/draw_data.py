@@ -37,13 +37,13 @@ def plot_validation_curve(svm_type, tested_param, param_values, train_scores_mea
     plt.legend(loc="best")
     plt.savefig(AppParams.plots_dir + "svm_validation_curve_" + svm_type + AppParams.plots_extension)
     plt.cla()
+    plt.clf()
     plt.close()
 
 
 def plot_confusion_matrix(true_labels, predicted_labels, labels,
-                          normalize=False,
-                          title=None,
-                          plot_idx=None,
+                          normalize=False, svm_type=None, param_c=None,
+                          title=None, plot_idx=None,
                           cmap=plt.cm.Blues):
     """
     This function prints and plots the confusion matrix.
@@ -52,8 +52,12 @@ def plot_confusion_matrix(true_labels, predicted_labels, labels,
     if not title:
         if normalize:
             title = 'Znormalizowana macierz pomyłek'
+            if svm_type is not None and param_c is not None:
+                title += ' - ' + svm_type + " C: " + str(param_c)
         else:
             title = 'Macierz pomyłek bez normalizacji'
+            if svm_type is not None and param_c is not None:
+                title += ' - ' + svm_type + " C: " + str(param_c)
 
     # Compute confusion matrix
     cm = confusion_matrix(true_labels, predicted_labels)
@@ -89,4 +93,24 @@ def plot_confusion_matrix(true_labels, predicted_labels, labels,
     fig.tight_layout()
     plt.savefig(AppParams.plots_dir + "confusion_matrix_" + plot_idx + AppParams.plots_extension)
     plt.cla()
+    plt.clf()
+    plt.close()
+
+def plot_top_n_accuracies_for_svm_type(top_n_accs_dict, svm_type, params_c):
+    title = "Dokładności"
+    for top_n in AppParams.svm_top_n_values:
+        title += (" Top-" + str(top_n) + " ")
+    title += " - " + " ".join((svm_type, "SVM"))
+    plt.title(title)
+    plt.xlabel("C")
+    plt.ylabel("Dokładności [%]")
+    plt.ylim(0.0, 1.1)
+    lw = 2
+
+    for top_n, accuracy in top_n_accs_dict.items():
+        plt.semilogx(params_c, accuracy, label=("Top-" + str(top_n)), lw=lw)
+    plt.legend(loc="best")
+    plt.savefig(AppParams.plots_dir + "top_n_accs_" + svm_type + AppParams.plots_extension)
+    plt.cla()
+    plt.clf()
     plt.close()

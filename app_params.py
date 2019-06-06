@@ -8,6 +8,8 @@ class AppParams(object):
     cropped_img_dir = "../data/Cropped_Images"
     prep_img_dir = "../data_prep"
 
+    svm_features_dir = "svm_features/"
+
     plots_dir = "plots/"
     plots_extension = ".png"
 
@@ -32,6 +34,12 @@ class AppParams(object):
 
     last_layer_before_classifier_name = 'global_average_pooling2d_1'
 
+    svm_train_features_path = svm_features_dir + 'train_features'
+    svm_train_labels_path = svm_features_dir + 'train_labels'
+    svm_test_features_path = svm_features_dir + 'test_features'
+    svm_test_labels_path = svm_features_dir + 'test_labels'
+    svm_labels_path = svm_features_dir + 'labels'
+
     svm_top_n_values = [1, 5]
     svm_cross_validation_sets = 3
     svm_c = [1e-3, 1e-2, 1e-1, 1, 10, 100, 1000]
@@ -41,6 +49,8 @@ class AppParams(object):
     gamma = 'scale'
     square_degree = 2
     svm_probability = True
+
+    svm_kernel_types = ['linear', 'square', 'exp']
 
     linear_kernel = {'kernel': 'linear', 'probability': svm_probability, 'gamma': gamma}
     square_kernel = {'kernel': 'poly', 'degree': square_degree, 'probability': svm_probability, 'gamma': gamma}
