@@ -5,8 +5,10 @@ import cv2
 import numpy as np
 from imutils import paths
 from keras.applications.mobilenetv2 import MobileNetV2
+from keras.callbacks import CSVLogger
 from keras.layers import Dense, Input, Dropout, GlobalAveragePooling1D, GlobalAveragePooling2D
 from keras.layers.convolutional import Conv2D
+from keras.metrics import top_k_categorical_accuracy
 from keras.models import Model
 from keras.models import load_model
 from keras.optimizers import Adam
@@ -126,12 +128,18 @@ class ModelCreator(object):
         #model.summary() podgląd jak wyglada model
         self.model, self.learn_history = self.fit_model(model, final_training_mode)
 
-    def fit_model(self, model, training_mode):
+    def fit_model(self, model, training_mode, out_file_name=None):
+        if out_file_name is None:
+            csv_logger = CSVLogger('reports/current.log')
+        else:
+            csv_logger = CSVLogger(out_file_name)
+
         if training_mode:
             learn_history = model.fit(
                 x=self.train_val,
                 y=self.train_val_lab,
                 verbose=1,
+                callbacks=[csv_logger],
                 epochs=AppParams.epochs,
                 validation_data=(self.test, self.test_lab)
             )
@@ -140,6 +148,7 @@ class ModelCreator(object):
                 x=self.train,
                 y=self.train_lab,
                 verbose=1,
+                callbacks=[csv_logger],
                 epochs=AppParams.val_epochs,
                 validation_data=(self.val, self.val_lab)
             )
@@ -169,7 +178,7 @@ class ModelCreator(object):
     def compile_model(self, model, optimizer, loss):
         model.compile(optimizer=optimizer,
                       loss=loss,
-                      metrics=['categorical_accuracy'])
+                      metrics=['categorical_accuracy', top_k_categorical_accuracy_metric])
         return model
 
     def _add_classification_layers(self, base_model, training_whole_model=False):
@@ -197,3 +206,7 @@ class ModelCreator(object):
         lb = LabelBinarizer()
         encoded_labels = lb.fit_transform(labels)
         return encoded_labels
+
+
+def top_k_categorical_accuracy_metric(y_true, y_pred):
+    return top_k_categorical_accuracy(y_true, y_pred, AppParams.top_k)
