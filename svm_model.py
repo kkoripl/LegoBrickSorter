@@ -1,4 +1,6 @@
 import datetime
+import os
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -15,15 +17,35 @@ def train_svm(model, model_creator):
     print(str(datetime.datetime.now()) + ' - start removing classifier')
     model = remove_classifier(model)
 
-    print(str(datetime.datetime.now()) + ' - start train features extracting')
-    #gets images features after cnn - size: (images_cnt, 1280)
-    train_features = extract_features(model, model_creator.train[0:500])
+    # if not os.path.isfile(AppParams.svm_train_features_path) or not os.path.isfile(
+    # AppParams.svm_test_features_path) or not os.path.isfile(AppParams.svm_test_labels_path) or not os.path.isfile(
+    # AppParams.svm_labels_path) or not os.path.isfile(AppParams.svm_train_labels_path):
+    model_creator.read_prepared_data(binarize_labels=False, save_labels_for_svm=True)
 
-    print(str(datetime.datetime.now()) + ' - start test features extracting')
-    test_features = extract_features(model, model_creator.test[0:500])
+    if os.path.isfile(AppParams.svm_train_features_path+ ".npy"):
+        print(str(datetime.datetime.now()) + ' - start train features loading')
+        train_features = np.load(AppParams.svm_train_features_path + ".npy")
+    else:
+        print(str(datetime.datetime.now()) + ' - start train features extracting')
+        # gets images features after cnn - size: (images_cnt, 1280)
+        train_features = extract_features(model, model_creator.train[0:500])
+        np.save(AppParams.svm_train_features_path, train_features)
+
+    if os.path.isfile(AppParams.svm_test_features_path+ ".npy"):
+        print(str(datetime.datetime.now()) + ' - start test features loading')
+        test_features = np.load(AppParams.svm_test_features_path + ".npy")
+    else:
+        print(str(datetime.datetime.now()) + ' - start test features extracting')
+        test_features = extract_features(model, model_creator.test[0:500])
+        np.save(AppParams.svm_test_features_path, test_features)
+
+    # labels = np.load(AppParams.svm_labels_path + ".npy")
+    # test_labels = np.load(AppParams.svm_test_labels_path + ".npy")
+    # train_labels = np.load(AppParams.svm_train_labels_path + ".npy")
 
     print(str(datetime.datetime.now()) + ' - start SVM experiments')
-    svm_experiments(train_features, model_creator.train_lab[0:500], test_features, model_creator.test_lab[0:500], model_creator.labels)
+    svm_experiments(train_features, model_creator.train_lab[0:500], test_features, model_creator.test_lab[0:500],
+                    model_creator.labels)
     print(str(datetime.datetime.now()) + ' - SVM experiments: DONE!')
 
 
@@ -38,12 +60,12 @@ def extract_features(model, images):
 
 
 def svm_experiments(train_features, train_labels, test_features, test_labels, labels):
-    check_error_tolerance_influence(train_features, train_labels)
+    # check_error_tolerance_influence(train_features, train_labels)
+    check_error_tolerance_for_top_n_accuracy(train_features, train_labels, test_features, test_labels, labels)
     # do_gridsearch(train_features, train_labels, test_features, test_labels, labels)
 
 
 def do_gridsearch(train_features, train_labels, test_features, test_labels, all_labels):
-
     for score in AppParams.svm_score_types:
         print("# Tuning hyper-parameters for %s" % score)
         print()
@@ -90,7 +112,8 @@ def check_error_tolerance_influence(train_data, train_labels):
     for svm_type, svm in svms.items():
         print(str(datetime.datetime.now()) + ' - SVM start checking err influence: ' + svm_type)
         measure_validation_stats(svm_type, svm, 'C',
-                                 np.logspace(AppParams.svm_c_powers[0],AppParams.svm_c_powers[-1], AppParams.svm_c_points_to_check),
+                                 np.logspace(AppParams.svm_c_powers[0], AppParams.svm_c_powers[-1],
+                                             AppParams.svm_c_points_to_check),
                                  'accuracy', train_data, train_labels)
 
 
@@ -104,32 +127,79 @@ def measure_validation_stats(svm_type, svm, tested_param, param_values, scorer, 
     validation_scores_std = np.std(validation_scores, axis=1)
     dd.plot_validation_curve(svm_type, tested_param, param_values, train_scores_mean, train_scores_std,
                              validation_scores_mean, validation_scores_std)
-    pass
 
 
-def make_svms_dict():
-    return {'linear': make_linear_kernel_svm(),
-            'square': make_square_kernel_svm(),
-            'exp': make_exp_kernel_svm()}
+def check_error_tolerance_for_top_n_accuracy(train_data, train_labels, test_data, test_labels, labels):
+    accs_dict = {svm_type:
+                    {param_c: None for param_c in AppParams.svm_c}
+                for svm_type in AppParams.svm_kernel_types}
+
+    for param_c in AppParams.svm_c:
+        svms = make_svms_dict(param_c)
+        for svm_type, svm in svms.items():
+            print(str(datetime.datetime.now()) + ' - start accuracies for' + svm_type + " - c:" + str(param_c))
+            svm.fit(train_data, train_labels)
+            labels_probs = svm.predict_proba(test_data)
+            labels_predicted = np.argsort(labels_probs, axis=1)[:, -1:]
+            accs_dict[svm_type][param_c] = count_top_n_accuracies(AppParams.svm_top_n_values, labels_probs, test_labels)
+            plot_confusion_matrix(test_labels, labels_predicted, labels, False, svm_type, param_c,  None, (svm_type + "_c_" + str(param_c)))
+
+    plot_top_n_accuracies(accs_dict)
 
 
-def make_linear_kernel_svm():
-    return SVC(kernel=AppParams.linear_kernel['kernel'],
-               probability=AppParams.linear_kernel['probability'],
-               gamma=AppParams.linear_kernel['gamma'])
+def plot_top_n_accuracies(svm_c_accuracies):
+    accs_dict = defaultdict(list)
+    print(str(datetime.datetime.now()) + ' - start ploting top n accuracies')
+    for svm_type, c_param_accs in svm_c_accuracies.items():
+        for param_c, accs in c_param_accs.items():
+            for top_n in AppParams.svm_top_n_values:
+                accs_dict[top_n].append(accs[top_n])
+        dd.plot_top_n_accuracies_for_svm_type(accs_dict, svm_type, AppParams.svm_c)
+        accs_dict.clear()
 
 
-def make_square_kernel_svm():
-    return SVC(kernel=AppParams.square_kernel['kernel'],
-               degree=AppParams.square_kernel['degree'],
-               probability=AppParams.square_kernel['probability'],
-               gamma=AppParams.square_kernel['gamma'])
+def make_svms_dict(param_c=None):
+    return {'linear': make_linear_kernel_svm(param_c),
+            'square': make_square_kernel_svm(param_c),
+            'exp': make_exp_kernel_svm(param_c)}
 
 
-def make_exp_kernel_svm():
-    return SVC(kernel=AppParams.exp_kernel['kernel'],
-               probability=AppParams.exp_kernel['probability'],
-               gamma=AppParams.exp_kernel['gamma'])
+def make_linear_kernel_svm(param_c=None):
+    if param_c is not None:
+        return SVC(kernel=AppParams.linear_kernel['kernel'],
+                   probability=AppParams.linear_kernel['probability'],
+                   gamma=AppParams.linear_kernel['gamma'],
+                   C=param_c)
+    else:
+        return SVC(kernel=AppParams.linear_kernel['kernel'],
+                   probability=AppParams.linear_kernel['probability'],
+                   gamma=AppParams.linear_kernel['gamma'])
+
+
+def make_square_kernel_svm(param_c=None):
+    if param_c is not None:
+        return SVC(kernel=AppParams.square_kernel['kernel'],
+                   degree=AppParams.square_kernel['degree'],
+                   probability=AppParams.square_kernel['probability'],
+                   gamma=AppParams.square_kernel['gamma'],
+                   C=param_c)
+    else:
+        return SVC(kernel=AppParams.square_kernel['kernel'],
+                   degree=AppParams.square_kernel['degree'],
+                   probability=AppParams.square_kernel['probability'],
+                   gamma=AppParams.square_kernel['gamma'])
+
+
+def make_exp_kernel_svm(param_c=None):
+    if param_c is not None:
+        return SVC(kernel=AppParams.exp_kernel['kernel'],
+                   probability=AppParams.exp_kernel['probability'],
+                   gamma=AppParams.exp_kernel['gamma'],
+                   C=param_c)
+    else:
+        return SVC(kernel=AppParams.exp_kernel['kernel'],
+                   probability=AppParams.exp_kernel['probability'],
+                   gamma=AppParams.exp_kernel['gamma'])
 
 
 def count_class_probabilities(svm, data):
