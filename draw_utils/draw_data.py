@@ -42,22 +42,20 @@ def plot_validation_curve(svm_type, tested_param, param_values, train_scores_mea
 
 
 def plot_confusion_matrix(true_labels, predicted_labels, labels,
-                          normalize=False, svm_type=None, param_c=None,
-                          title=None, plot_idx=None,
+                          normalize=False, subtitle=None, plot_idx=None,
                           cmap=plt.cm.Blues):
     """
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
     """
-    if not title:
-        if normalize:
-            title = 'Znormalizowana macierz pomyłek'
-            if svm_type is not None and param_c is not None:
-                title += ' - ' + svm_type + " C: " + str(param_c)
-        else:
-            title = 'Macierz pomyłek bez normalizacji'
-            if svm_type is not None and param_c is not None:
-                title += ' - ' + svm_type + " C: " + str(param_c)
+    if normalize:
+        title = 'Znormalizowana macierz pomyłek'
+        if subtitle is not None:
+            title += subtitle
+    else:
+        title = 'Macierz pomyłek bez normalizacji'
+        if subtitle is not None:
+            title += subtitle
 
     # Compute confusion matrix
     cm = confusion_matrix(true_labels, predicted_labels)
@@ -114,3 +112,30 @@ def plot_top_n_accuracies_for_svm_type(top_n_accs_dict, svm_type, params_c):
     plt.cla()
     plt.clf()
     plt.close()
+    
+def plot_roc_curves_for_classes(fpr, tpr, roc_auc, labels, ct_on_plot, subtitle, plot_idx):
+
+    make_equal_parts = lambda lst, part_size: [lst[i:i + part_size] for i in range(0, len(lst), part_size)]
+    lw=2
+    parts = make_equal_parts(range(0, len(labels)), ct_on_plot)
+    j=0
+    for p in parts:
+        j += 1
+        # Plot all ROC curves
+        plt.figure()
+        for i in range(len(p)):
+            plt.plot(fpr[p[i]], tpr[p[i]], lw=lw,
+                     label='Krzywa ROC klasy: {0} (area = {1:0.2f})'
+                           ''.format(labels[p[i]], roc_auc[p[i]]))
+
+        plt.plot([0, 1], [0, 1], 'k--', lw=lw)
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Krywa ROC - ' + subtitle)
+        plt.legend(loc="best")
+        plt.savefig(AppParams.plots_dir + "roc_curve_" + plot_idx + '_' + str(j) + AppParams.plots_extension)
+        plt.cla()
+        plt.clf()
+        plt.close()

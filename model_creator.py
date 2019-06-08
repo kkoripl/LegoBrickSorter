@@ -12,10 +12,12 @@ from keras.metrics import top_k_categorical_accuracy
 from keras.models import Model
 from keras.models import load_model
 from keras.optimizers import Adam
+from sklearn.metrics import roc_curve, auc
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelBinarizer
+from sklearn.preprocessing import LabelBinarizer, label_binarize
 
 from app_params import AppParams
+from draw_utils.draw_data import plot_roc_curves_for_classes
 
 
 class ModelCreator(object):
@@ -191,6 +193,7 @@ class ModelCreator(object):
                       metrics=['categorical_accuracy', top_k_categorical_accuracy_metric])
         return model
 
+
     def _add_classification_layers(self, base_model, training_whole_model=False):
         standard_size_layer = base_model.output
         # Przy eksperymentach z uczeniem całej sieci potrzebne jest nagłe zmienienie wymiaru, aby klasyfikator dawał wynik w postaci liczby klas
@@ -220,3 +223,14 @@ class ModelCreator(object):
 
 def top_k_categorical_accuracy_metric(y_true, y_pred):
     return top_k_categorical_accuracy(y_true, y_pred, AppParams.top_k)
+
+def compute_roc_curves(test_labels, labels_probs, categories_cnt, labels, subtitle, plot_idx):
+    test_labels = label_binarize(test_labels, classes=[0, 1, 2, 3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19])
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for i in range(categories_cnt):
+        fpr[i], tpr[i], _ = roc_curve(test_labels[:, i], labels_probs[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    plot_roc_curves_for_classes(fpr, tpr, roc_auc, labels, 4, subtitle, plot_idx)

@@ -5,12 +5,14 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 from keras import Model
+from sklearn.metrics import classification_report
 from sklearn.model_selection import GridSearchCV, validation_curve
 from sklearn.svm import SVC
 
 from app_params import AppParams
 from draw_utils import draw_data as dd
 from draw_utils.draw_data import plot_confusion_matrix
+from model_creator import compute_roc_curves
 
 
 def train_svm(model, model_creator):
@@ -28,7 +30,7 @@ def train_svm(model, model_creator):
     else:
         print(str(datetime.datetime.now()) + ' - start train features extracting')
         # gets images features after cnn - size: (images_cnt, 1280)
-        train_features = extract_features(model, model_creator.train[0:500])
+        train_features = extract_features(model, model_creator.train)
         np.save(AppParams.svm_train_features_path, train_features)
 
     if os.path.isfile(AppParams.svm_test_features_path+ ".npy"):
@@ -36,7 +38,7 @@ def train_svm(model, model_creator):
         test_features = np.load(AppParams.svm_test_features_path + ".npy")
     else:
         print(str(datetime.datetime.now()) + ' - start test features extracting')
-        test_features = extract_features(model, model_creator.test[0:500])
+        test_features = extract_features(model, model_creator.test)
         np.save(AppParams.svm_test_features_path, test_features)
 
     # labels = np.load(AppParams.svm_labels_path + ".npy")
@@ -60,9 +62,9 @@ def extract_features(model, images):
 
 
 def svm_experiments(train_features, train_labels, test_features, test_labels, labels):
-    # check_error_tolerance_influence(train_features, train_labels)
-    check_error_tolerance_for_top_n_accuracy(train_features, train_labels, test_features, test_labels, labels)
-    # do_gridsearch(train_features, train_labels, test_features, test_labels, labels)
+    check_error_tolerance_influence_on_validation(train_features, train_labels)
+    check_error_tolerance_influence_on_base_behaviour(train_features, train_labels, test_features, test_labels, labels)
+    do_gridsearch(train_features, train_labels, test_features, test_labels, labels)
 
 
 def do_gridsearch(train_features, train_labels, test_features, test_labels, all_labels):
@@ -84,30 +86,18 @@ def do_gridsearch(train_features, train_labels, test_features, test_labels, all_
         for mean, std, params in zip(means, stds, svm.cv_results_['params']):
             print("%0.3f (+/-%0.03f) for %r"
                   % (mean, std * 2, params))
-        print()
-        print("SVM CV RESULTS:")
-        print()
-        print(pd.DataFrame.from_dict(svm.cv_results_))
-        print()
-        print()
-        print("Detailed classification report:")
-        print()
-        print("The model is trained on the full development set.")
-        print("The scores are computed on the full evaluation set.")
-        print()
-        labels_predicted = svm.predict(test_features)
-        plot_confusion_matrix(test_labels, labels_predicted, all_labels, True)
-        # print(classification_report(y_true=test_labels, y_pred=labels_predicted, output_dict=False))
-        # print()
-        # print("Accuracy: {}%".format(svm.score(test_features, test_labels) * 100))
-        # print("Confusion matrix")
-        # print(pd.DataFrame(confusion_matrix(test_labels, labels_predicted)))
-        # class_probs = count_class_probabilities(svm, test_features)
-        # acc = count_top_n_accuracies(AppParams.svm_top_n_values, class_probs, test_labels)
-        pass
+        pd.DataFrame.from_dict(svm.cv_results_).to_csv('results/best_cv_results.csv', sep='\t', encoding='utf-8')
+        svm.fit(train_features, train_labels)
+        labels_probs = svm.predict_proba(test_features)
+        labels_predicted = np.argsort(labels_probs, axis=1)[:, -1:]
+        pd.DataFrame.from_dict(classification_report(y_true=test_labels, y_pred=labels_predicted, output_dict=True, target_names=all_labels)).to_csv('results/best_class_report.csv', sep='\t', encoding='utf-8')
+        save_dict_to_txt_file('best_accs', count_top_n_accuracies(AppParams.svm_top_n_values, labels_probs, test_labels))
+        plot_confusion_matrix(test_labels, labels_predicted, all_labels, False,
+                              ' - najlepszy SVM', 'best')
+        compute_roc_curves(test_labels, labels_probs, 20, all_labels, 'najlepszy SVM', 'best')
 
 
-def check_error_tolerance_influence(train_data, train_labels):
+def check_error_tolerance_influence_on_validation(train_data, train_labels):
     svms = make_svms_dict()
     for svm_type, svm in svms.items():
         print(str(datetime.datetime.now()) + ' - SVM start checking err influence: ' + svm_type)
@@ -129,7 +119,7 @@ def measure_validation_stats(svm_type, svm, tested_param, param_values, scorer, 
                              validation_scores_mean, validation_scores_std)
 
 
-def check_error_tolerance_for_top_n_accuracy(train_data, train_labels, test_data, test_labels, labels):
+def check_error_tolerance_influence_on_base_behaviour(train_data, train_labels, test_data, test_labels, labels):
     accs_dict = {svm_type:
                     {param_c: None for param_c in AppParams.svm_c}
                 for svm_type in AppParams.svm_kernel_types}
@@ -142,8 +132,11 @@ def check_error_tolerance_for_top_n_accuracy(train_data, train_labels, test_data
             labels_probs = svm.predict_proba(test_data)
             labels_predicted = np.argsort(labels_probs, axis=1)[:, -1:]
             accs_dict[svm_type][param_c] = count_top_n_accuracies(AppParams.svm_top_n_values, labels_probs, test_labels)
-            plot_confusion_matrix(test_labels, labels_predicted, labels, False, svm_type, param_c,  None, (svm_type + "_c_" + str(param_c)))
+            plot_confusion_matrix(test_labels, labels_predicted, labels, False,
+                                  (' - ' + svm_type + " C: " + str(param_c)), (svm_type + "_c_" + str(param_c)))
+            compute_roc_curves(test_labels, labels_probs, 20, labels, (svm_type + ' ' + str(param_c) + ' SVM'), (svm_type + '_' + str(param_c)))
 
+    save_dict_to_txt_file('accs_for_param_c', accs_dict)
     plot_top_n_accuracies(accs_dict)
 
 
@@ -213,3 +206,8 @@ def count_top_n_accuracies(n_values, class_probs, true_labels):
 def count_top_n_accuracy(n, class_probs, true_labels):
     topNclasses = np.argsort(class_probs, axis=1)[:, -n:]
     return np.mean(np.array([1 if true_labels[i] in topNclasses[i] else 0 for i in range(len(topNclasses))]))
+
+def save_dict_to_txt_file(fileName, data):
+    f = open("results/" + fileName + ".txt", "w")
+    f.write(str(data))
+    f.close()
