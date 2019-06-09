@@ -105,16 +105,23 @@ class ModelCreator(object):
         return base_model
 
     # trenowanie ostatniej warstwy klasyfikującej - ZADANIE 1
-    def train_last_fully_connected_layer(self, optimizer=Adam(), loss=AppParams.loss, final_training_mode=True):
+    def train_last_fully_connected_layer(self, optimizer=Adam(), loss=AppParams.loss,
+                                         first_classif_layer_size=AppParams.first_classif_layer_size,
+                                         dropout_rate=AppParams.dropout_rate,
+                                         logs_file=None,
+                                         final_training_mode=True):
         for layer in self.base_model.layers:
             layer.trainable = False
-        output_tensor = self._add_classification_layers(self.base_model)
+        output_tensor = self._add_classification_layers(self.base_model, dropout_rate=dropout_rate,
+                                                        first_size_layer=first_classif_layer_size)
         model = Model(input=self.base_model.input, outputs=output_tensor)  # złożenie całkowitego modelu
         model = self.compile_model(model, optimizer=optimizer, loss=loss)
-        self.model, self.learn_history = self.fit_model(model, final_training_mode)  # nauka
+        self.model, self.learn_history = self.fit_model(model, final_training_mode, out_filename=logs_file)  # nauka
 
     # trenowanie również ostatniej warstwy splotowej - ZADANIE 2
-    def train_from_last_convolutional_layer(self, optimizer=Adam(), loss=AppParams.loss, final_training_mode=True):
+    def train_from_last_convolutional_layer(self, optimizer=Adam(), loss=AppParams.loss,
+                                            logs_file=None,
+                                            final_training_mode=True):
         first_conv_trainable_set = False
         for layer in reversed(self.base_model.layers):
             layer.trainable = not first_conv_trainable_set
@@ -123,7 +130,7 @@ class ModelCreator(object):
         output_tensor = self._add_classification_layers(self.base_model)
         model = Model(input=self.base_model.input, outputs=output_tensor)
         model = self.compile_model(model, optimizer=optimizer, loss=loss)
-        self.model, self.learn_history = self.fit_model(model, final_training_mode)
+        self.model, self.learn_history = self.fit_model(model, final_training_mode, out_filename=logs_file)
 
     # trenowanie wszystkich warstw w sieci splotowej - ZADANIE 3
     def train_whole_convolutional_network(self, removal_coef, optimizer=Adam(), loss=AppParams.loss, final_training_mode=True):
@@ -140,11 +147,11 @@ class ModelCreator(object):
         #model.summary() podgląd jak wyglada model
         self.model, self.learn_history = self.fit_model(model, final_training_mode)
 
-    def fit_model(self, model, training_mode, out_file_name=None):
-        if out_file_name is None:
+    def fit_model(self, model, training_mode, out_filename=None):
+        if out_filename is None:
             csv_logger = CSVLogger('reports/current.log')
         else:
-            csv_logger = CSVLogger(out_file_name)
+            csv_logger = CSVLogger(out_filename)
 
         if training_mode:
             learn_history = model.fit(
@@ -193,8 +200,9 @@ class ModelCreator(object):
                       metrics=['categorical_accuracy', top_k_categorical_accuracy_metric])
         return model
 
-
-    def _add_classification_layers(self, base_model, training_whole_model=False):
+    def _add_classification_layers(self, base_model, training_whole_model=False,
+                                   dropout_rate=AppParams.dropout_rate,
+                                   first_size_layer=AppParams.first_classif_layer_size):
         standard_size_layer = base_model.output
         # Przy eksperymentach z uczeniem całej sieci potrzebne jest nagłe zmienienie wymiaru, aby klasyfikator dawał wynik w postaci liczby klas
         # Zbijamy do 1D, ponieważ dense działa tylko na ostatnim wymiarze (zmienia go na liczbę swoich neuronow), a my mamy 20 klas (1d)
@@ -208,8 +216,8 @@ class ModelCreator(object):
                 # Pooling w 2D: Robimy z 2d => 1d
                 standard_size_layer = GlobalAveragePooling1D()(base_model.output)
 
-        first_classif_layer = Dense(AppParams.first_classif_layer_size, activation='relu')(standard_size_layer)
-        dropout_layer = Dropout(AppParams.dropout_rate)(first_classif_layer)
+        first_classif_layer = Dense(first_size_layer, activation='relu')(standard_size_layer)
+        dropout_layer = Dropout(dropout_rate)(first_classif_layer)
         output_tensor = Dense(self.categories_cnt, activation='softmax')(dropout_layer)
         return output_tensor
 

@@ -15,13 +15,13 @@ model_creator.read_prepared_data()  # odczytanie odpowiednio podzielonych danych
 
 # ZADANIE 1
 if AppParams.layers_trainable_mode is LayersTrainableMode.ONLY_CLASSIF:
-    model_creator.train_last_fully_connected_layer()
-    dd.draw_learning_history(model_creator.learn_history, title='Uczona ostatnia warstwa')
+    model_creator.train_last_fully_connected_layer(logs_file='only_classif.csv')
+    dd.draw_learning_history(model_creator.learn_history, title='Uczenie części klasyfikującej', out_filename='only_classif')
 
 # ZADANIE 2
 elif AppParams.layers_trainable_mode is LayersTrainableMode.FROM_LAST_CONV:
-    model_creator.train_from_last_convolutional_layer()
-    dd.draw_learning_history(model_creator.learn_history, title='Uczenie od ostatniej warstwy splotowej')
+    model_creator.train_from_last_convolutional_layer(logs_file='from_last_conv.csv')
+    dd.draw_learning_history(model_creator.learn_history, title='Uczenie od ostatniej warstwy splotowej', out_filename='from_last_conv')
 
 # ZADANIE 3 - na razie na zasadzie walidacji, aby znaleźć optymalny współczynnik usuwania warstw
 elif AppParams.layers_trainable_mode is LayersTrainableMode.ALL:
@@ -40,3 +40,6 @@ elif AppParams.layers_trainable_mode is LayersTrainableMode.SVM_REP:
 
 # do wyboru najlepszej funkcji kosztu
 # pv.validate_loss_functions(['mean_squared_error', 'categorical_hinge', 'categorical_crossentropy'])
+
+# pv.validate_first_classif_sizes(AppParams.first_classif_layer_sizes)
+# pv.validate_dropout_rates(AppParams.dropout_rates)

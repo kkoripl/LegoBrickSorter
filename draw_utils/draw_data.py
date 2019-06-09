@@ -6,7 +6,7 @@ from sklearn.utils.multiclass import unique_labels
 from app_params import AppParams
 
 
-def draw_learning_history(history, title='Dokładność modelu w procesie uczenia'):
+def draw_learning_history(history, title='Dokładność modelu w procesie uczenia', out_filename=None):
     epochs = np.arange(1, len(history.epoch)+1)
     plt.plot(epochs, history.history['categorical_accuracy'])
     plt.plot(epochs, history.history['val_categorical_accuracy'])
@@ -15,7 +15,44 @@ def draw_learning_history(history, title='Dokładność modelu w procesie uczeni
     plt.xlabel('numer epoki')
     plt.legend(['dane trenujące', 'dane testowe'])
     plt.grid()
-    plt.show()
+    if out_filename is not None:
+        plt.savefig(AppParams.plots_dir + out_filename + "_cat_acc" + AppParams.plots_extension)
+        plt.cla()
+        plt.clf()
+        plt.close()
+    else:
+        plt.show()
+
+
+def draw_used_params_values_comparision(histories, values, out_filename=None):
+    epochs = np.arange(1, len(histories[0].epoch) + 1)
+    for history in histories:
+        plt.plot(epochs, history.history['val_categorical_accuracy'])
+    plt.title('Dokładność klasyfikacji na zbiorze walidującym')
+    plt.ylabel('dokładność [%]')
+    plt.xlabel('numer epoki')
+    plt.legend(values)
+    if out_filename is not None:
+        plt.savefig(AppParams.plots_dir + out_filename + "_cat_acc" + AppParams.plots_extension)
+        plt.cla()
+        plt.clf()
+        plt.close()
+    else:
+        plt.show()
+
+    for history in histories:
+        plt.plot(epochs, history.history['val_top_k_categorical_accuracy_metric'])
+    plt.title(f'Dokładność klasyfikacji top {AppParams.top_k} na zbiorze walidującym')
+    plt.ylabel('dokładność [%]')
+    plt.xlabel('numer epoki')
+    plt.legend(values)
+    if out_filename is not None:
+        plt.savefig(AppParams.plots_dir + out_filename + "_top_k_acc" + AppParams.plots_extension)
+        plt.cla()
+        plt.clf()
+        plt.close()
+    else:
+        plt.show()
 
 
 def plot_validation_curve(svm_type, tested_param, param_values, train_scores_mean, train_scores_std, validation_scores_mean, validation_scores_std):

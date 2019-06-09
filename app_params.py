@@ -22,10 +22,10 @@ class AppParams(object):
 
     layers_trainable_mode = LayersTrainableMode.ONLY_CLASSIF  # rodzaj zadania
     test_part = 0.25
-    epochs = 10
+    epochs = 15
     loss = 'categorical_crossentropy'
-    first_classif_layer_size = 10
-    dropout_rate = 0.1
+    first_classif_layer_size = 60
+    dropout_rate = 0.3
 
     val_epochs = 10
 
@@ -63,3 +63,7 @@ class AppParams(object):
     svm_score_types = ['accuracy']
 
     top_k = 5
+
+    #validation
+    first_classif_layer_sizes = [20, 40, 60, 80]
+    dropout_rates = [0, 0.1, 0.2, 0.3]

@@ -4,3 +4,5 @@ venv
 charts
 .idea
 __pycache__
+reports
+plots
