@@ -34,6 +34,8 @@ class AppParams(object):
 
     last_layer_before_classifier_name = 'global_average_pooling2d_1'
 
+    whole_network_trained_path = 'models/mobilenetv2_1.00_128_ALL_10_ALL.h5'
+
     svm_train_features_path = svm_features_dir + 'train_features'
     svm_train_labels_path = svm_features_dir + 'train_labels'
     svm_test_features_path = svm_features_dir + 'test_features'
