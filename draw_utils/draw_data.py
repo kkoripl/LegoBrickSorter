@@ -1,17 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.font_manager import FontProperties
 from sklearn.metrics import confusion_matrix
 from sklearn.utils.multiclass import unique_labels
 
 from app_params import AppParams
 
 
-def draw_learning_history(history, title='Dokładność modelu w procesie uczenia', out_filename=None):
+def draw_learning_history(history, title='Dokładność klasyfikacji procesie uczenia', out_filename=None):
     epochs = np.arange(1, len(history.epoch)+1)
     plt.plot(epochs, history.history['categorical_accuracy'])
     plt.plot(epochs, history.history['val_categorical_accuracy'])
     plt.title(title)
-    plt.ylabel('dokładność [%]')
+    plt.ylabel('dokładność')
     plt.xlabel('numer epoki')
     plt.legend(['dane trenujące', 'dane testowe'])
     plt.grid()
@@ -24,12 +25,31 @@ def draw_learning_history(history, title='Dokładność modelu w procesie uczeni
         plt.show()
 
 
+def draw_learning_history_top_k(history, title='Dokładność klasyfikacji top {AppParams.top_k} w procesie uczenia',
+                                out_filename=None):
+    epochs = np.arange(1, len(history.epoch)+1)
+    plt.plot(epochs, history.history['top_k_categorical_accuracy_metric'])
+    plt.plot(epochs, history.history['val_top_k_categorical_accuracy_metric'])
+    plt.title(title)
+    plt.ylabel('dokładność')
+    plt.xlabel('numer epoki')
+    plt.legend(['dane trenujące', 'dane testowe'])
+    plt.grid()
+    if out_filename is not None:
+        plt.savefig(AppParams.plots_dir + out_filename + "_top_k_acc" + AppParams.plots_extension)
+        plt.cla()
+        plt.clf()
+        plt.close()
+    else:
+        plt.show()
+
+
 def draw_used_params_values_comparision(histories, values, out_filename=None):
     epochs = np.arange(1, len(histories[0].epoch) + 1)
     for history in histories:
         plt.plot(epochs, history.history['val_categorical_accuracy'])
     plt.title('Dokładność klasyfikacji na zbiorze walidującym')
-    plt.ylabel('dokładność [%]')
+    plt.ylabel('dokładność')
     plt.xlabel('numer epoki')
     plt.legend(values)
     if out_filename is not None:
@@ -43,9 +63,46 @@ def draw_used_params_values_comparision(histories, values, out_filename=None):
     for history in histories:
         plt.plot(epochs, history.history['val_top_k_categorical_accuracy_metric'])
     plt.title(f'Dokładność klasyfikacji top {AppParams.top_k} na zbiorze walidującym')
-    plt.ylabel('dokładność [%]')
+    plt.ylabel('dokładność')
     plt.xlabel('numer epoki')
     plt.legend(values)
+    if out_filename is not None:
+        plt.savefig(AppParams.plots_dir + out_filename + "_top_k_acc" + AppParams.plots_extension)
+        plt.cla()
+        plt.clf()
+        plt.close()
+    else:
+        plt.show()
+
+
+def draw_two_used_params_values_comparision(histories_dict, out_filename=None):
+    legend = []
+    params_values = list(histories_dict.keys())
+    epochs = np.arange(1, len(histories_dict[params_values[0]].epoch) + 1)
+    font_p = FontProperties()
+    font_p.set_size('small')
+    for params_value_pair in params_values:
+        history = histories_dict[params_value_pair]
+        plt.plot(epochs, history.history['val_categorical_accuracy'])
+    plt.title('Dokładność klasyfikacji na zbiorze walidującym')
+    plt.ylabel('dokładność ')
+    plt.xlabel('numer epoki')
+    plt.legend(params_values, loc='best', prop=font_p)
+    if out_filename is not None:
+        plt.savefig(AppParams.plots_dir + out_filename + "_cat_acc" + AppParams.plots_extension)
+        plt.cla()
+        plt.clf()
+        plt.close()
+    else:
+        plt.show()
+
+    for params_value_pair in params_values:
+        history = histories_dict[params_value_pair]
+        plt.plot(epochs, history.history['val_top_k_categorical_accuracy_metric'])
+    plt.title(f'Dokładność klasyfikacji top {AppParams.top_k} na zbiorze walidującym')
+    plt.ylabel('dokładność')
+    plt.xlabel('numer epoki')
+    plt.legend(params_values, loc='best', prop=font_p)
     if out_filename is not None:
         plt.savefig(AppParams.plots_dir + out_filename + "_top_k_acc" + AppParams.plots_extension)
         plt.cla()
@@ -58,7 +115,7 @@ def draw_used_params_values_comparision(histories, values, out_filename=None):
 def plot_validation_curve(svm_type, tested_param, param_values, train_scores_mean, train_scores_std, validation_scores_mean, validation_scores_std):
     plt.title("Krzywa walidacji dla " + svm_type + " SVM")
     plt.xlabel(tested_param)
-    plt.ylabel("Dokładność (top-1) [%]")
+    plt.ylabel("Dokładność (top-1)")
     plt.ylim(0.0, 1.1)
     lw = 2
     plt.semilogx(param_values, train_scores_mean, label="Zbiory trenujące",
@@ -138,7 +195,7 @@ def plot_top_n_accuracies_for_svm_type(top_n_accs_dict, svm_type, params_c):
     title += " - " + " ".join((svm_type, "SVM"))
     plt.title(title)
     plt.xlabel("C")
-    plt.ylabel("Dokładności [%]")
+    plt.ylabel("Dokładności")
     plt.ylim(0.0, 1.1)
     lw = 2
 

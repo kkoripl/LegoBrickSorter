@@ -49,7 +49,6 @@ class ModelCreator(object):
         for idx, imagePath in enumerate(image_paths):
             image = cv2.imread(imagePath)  # odczytanie obrazu
             normalized_image = cv2.normalize(image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)  # normalizacja obrazu
-            print('image {} of {} read'.format(idx, examples_cnt))
             images.append(normalized_image)  # dodanie obrazu do listy
             label = imagePath.split(os.path.sep)[-2]  # odczytanie kategorii obrazu
             labels.append(label)  # dodanie kategorii obrazu do listy
@@ -120,6 +119,8 @@ class ModelCreator(object):
 
     # trenowanie również ostatniej warstwy splotowej - ZADANIE 2
     def train_from_last_convolutional_layer(self, optimizer=Adam(), loss=AppParams.loss,
+                                            first_classif_layer_size=AppParams.first_classif_layer_size,
+                                            dropout_rate=AppParams.dropout_rate,
                                             logs_file=None,
                                             final_training_mode=True):
         first_conv_trainable_set = False
@@ -127,7 +128,8 @@ class ModelCreator(object):
             layer.trainable = not first_conv_trainable_set
             if type(layer) is Conv2D:
                 first_conv_trainable_set = True
-        output_tensor = self._add_classification_layers(self.base_model)
+        output_tensor = self._add_classification_layers(self.base_model, dropout_rate=dropout_rate,
+                                                        first_size_layer=first_classif_layer_size)
         model = Model(input=self.base_model.input, outputs=output_tensor)
         model = self.compile_model(model, optimizer=optimizer, loss=loss)
         self.model, self.learn_history = self.fit_model(model, final_training_mode, out_filename=logs_file)
@@ -151,7 +153,7 @@ class ModelCreator(object):
         if out_filename is None:
             csv_logger = CSVLogger('reports/current.log')
         else:
-            csv_logger = CSVLogger(out_filename)
+            csv_logger = CSVLogger('reports/' + out_filename)
 
         if training_mode:
             learn_history = model.fit(

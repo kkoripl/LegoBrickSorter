@@ -1,2 +1,0 @@
-MobileNetV2 80 epok, konfiguracja standardowa:
-cat_acc = 96,27%, val_acc = 35,72% loss: 0.2902 - categorical_accuracy: 0.9627 - val_loss: 2.0199 - val_categorical_accuracy: 0.3572
